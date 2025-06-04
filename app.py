@@ -1,8 +1,7 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, url_for
 import os
 import cv2
-import numpy as np
-import opennsfw2 as n2  # Import OpenNSFW2 for nudity detection
+from nudenet import NudeDetector  # Import NudeNet for nudity detection
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -22,7 +21,12 @@ uploaded_images = {}
 # Configure the upload folder
 UPLOAD_FOLDER = 'uploads/'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['STATIC_FOLDER'] = 'static/'  # Path for serving static files
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(app.config['STATIC_FOLDER'], exist_ok=True)
+
+# Initialize the NudeDetector
+detector = NudeDetector()
 
 @app.route('/')
 def index():
@@ -74,43 +78,58 @@ def detect_nudity():
     # Process the image and classify
     result = detect_and_classify(filepath)
 
+    # If nudity detected, blur image
     if result['is_nude']:
-        uploaded_images[filename] = {'blurred_image': result['blurred_image'], 'password': SECRET_PASSWORD}
+        blurred_image_path = os.path.join(app.config['STATIC_FOLDER'], f"blurred_{filename}")
+        uploaded_images[filename] = {'blurred_image': blurred_image_path, 'password': SECRET_PASSWORD}
+        cv2.imwrite(blurred_image_path, result['blurred_image'])  # Save the blurred image in static folder
         return jsonify({
             "message": "Nudity detected and image blurred.",
-            "blurred_image": result['blurred_image']
+            "blurred_image": url_for('static', filename=f'blurred_{filename}'),
+            "original_image": url_for('static', filename=filename)
         }), 200
     else:
         return jsonify({
             "message": "No nudity detected in the image.",
-            "original_image": filepath
+            "original_image": url_for('static', filename=filename)
         }), 200
 
-# Function to detect and classify nudity using OpenNSFW2
+# Function to detect and classify nudity using NudeNet
 def detect_and_classify(image_path):
     image = cv2.imread(image_path)
 
-    # Resize the image to 224x224 (model's input size)
-    image_resized = cv2.resize(image, (224, 224))
-    image_preprocessed = np.expand_dims(image_resized, axis=0) / 255.0
+    # Use NudeNet's detector to detect nudity in the image
+    detections = detector.detect(image_path)
 
-    # Classify the image using OpenNSFW2 model
-    prediction = n2.predict_image(image_path)
+    print("Detection Results:", detections)  # Debugging log
 
     is_nude = False
-    blurred_image_path = None
+    blurred_image = None
 
-    # If nudity is detected (confidence > 0.8), blur the image
-    if prediction > 0.8:  # Assuming the output is a probability between 0 and 1
-        is_nude = True
-        blurred_image = cv2.GaussianBlur(image, (99, 99), 30)
-        blurred_image_path = image_path.replace('.jpg', '_blurred.jpg')
-        cv2.imwrite(blurred_image_path, blurred_image)  # Save the blurred image
+    # Define the classes that indicate nudity
+    nudity_classes = [
+        'FEMALE_BREAST_EXPOSED',
+        'FEMALE_GENITALIA_EXPOSED',
+        'BUTTOCKS_EXPOSED',
+        'MALE_GENITALIA_EXPOSED',
+        'ANUS_EXPOSED',
+        'BELLY_EXPOSED'
+    ]
+    confidence_threshold = 0.8
+
+    # Ensure we are checking for the presence of the correct 'class' and 'score'
+    for detection in detections:
+        if 'class' in detection and 'score' in detection:
+            print(f"Class: {detection['class']}, Score: {detection['score']}")  # Debugging
+            # Check if the detected class is related to nudity and if the confidence score is high enough
+            if detection['class'] in nudity_classes and detection['score'] > confidence_threshold:
+                is_nude = True
+                blurred_image = cv2.GaussianBlur(image, (99, 99), 30)  # Apply Gaussian Blur
+                break  # No need to check further if nudity is detected
 
     return {
         'is_nude': is_nude,
-        'confidence': prediction,
-        'blurred_image': blurred_image_path
+        'blurred_image': blurred_image
     }
 
 # Route to unblur the image after password check
@@ -121,10 +140,10 @@ def unblur_image():
     password = data.get('password')
 
     if password == uploaded_images.get(filename, {}).get('password'):
-        original_image_path = filename.replace('_blurred', '')
+        original_image_path = os.path.join(app.config['STATIC_FOLDER'], filename)
         return jsonify({
             "message": "Password correct. Here is the original image.",
-            "original_image": original_image_path
+            "original_image": url_for('static', filename=filename)
         }), 200
     else:
         return jsonify({"error": "Incorrect password!"}), 400

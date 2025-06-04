@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Entries</title>
+    <title>NSFW Detection</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500&family=Rubik:wght@400&display=swap" rel="stylesheet">
     <style>
         * {
@@ -84,34 +84,36 @@
             margin-top: 20px;
         }
         .image-preview img {
-            max-width: 100%;
+            max-width: 50%;  /* Make the image smaller */
             border-radius: 10px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Edit the Entries</h1>
-        <h3>What changes would you like to make?</h3>
+        <h1>Upload an Image to Detect Nudity</h1>
 
-        <!-- Password Update and Add New User Buttons -->
-        <div class="form-row">
-            <button class="button" id="updatePasswordBtn">Update Password</button>
+        <input type="file" id="imageUpload" />
+        <button class="button" id="detectNudityBtn">Detect Nudity</button>
+
+        <h3>Unblur Image</h3>
+        <div class="form-group">
+            <input type="text" id="passwordInput" placeholder="Enter password to unblur" class="upload-input" />
+            <button class="button" id="unblurImageBtn">Unblur Image</button>
+        </div>
+
+        <h3>Add New User</h3>
+        <div class="form-group">
+            <input type="text" id="newUsername" placeholder="Enter new username" class="upload-input" />
+            <input type="password" id="newPassword" placeholder="Enter new password" class="upload-input" />
             <button class="button" id="addNewUserBtn">Add New User</button>
         </div>
 
-        <!-- Nudity Detection -->
-        <h3>Upload an Image to Detect Nudity</h3>
+        <h3>Update Password</h3>
         <div class="form-group">
-            <input type="file" id="imageUpload" class="upload-input" />
-            <button class="button" id="detectNudityBtn">Detect Nudity</button>
-        </div>
-
-        <!-- Password Protection to Unblur Image -->
-        <h3>Unblur Image</h3>
-        <div class="form-group">
-            <input type="text" id="passwordInput" placeholder="Enter password to unblur" class="upload-input"/>
-            <button class="button" id="unblurImageBtn">Unblur Image</button>
+            <input type="text" id="updateUsername" placeholder="Enter username" class="upload-input" />
+            <input type="password" id="updatePassword" placeholder="Enter new password" class="upload-input" />
+            <button class="button" id="updatePasswordBtn">Update Password</button>
         </div>
 
         <div id="resultMessage"></div>
@@ -119,7 +121,6 @@
     </div>
 
     <script>
-        // Handle the Detect Nudity button click
         document.getElementById('detectNudityBtn').addEventListener('click', function() {
             const fileInput = document.getElementById('imageUpload');
             const file = fileInput.files[0];
@@ -138,10 +139,10 @@
                     const imagePreview = document.getElementById('imagePreview');
                     if (data.message) {
                         resultMessage.textContent = data.message;
+                        console.log("Received Response: ", data);  // Debug response
 
-                        // Show the appropriate image
                         const image = document.createElement('img');
-                        if (data.blur) {
+                        if (data.blurred_image) {
                             image.src = data.blurred_image; // Show blurred image if nudity is detected
                         } else {
                             image.src = data.original_image; // Show the original image if no nudity
@@ -152,7 +153,9 @@
                         resultMessage.textContent = 'Error: ' + data.error;
                     }
                 })
-                .catch(error => console.error('Error:', error));
+                .catch(error => {
+                    console.error('Error:', error);
+                });
             }
         });
 
@@ -173,7 +176,6 @@
                 const resultMessage = document.getElementById('resultMessage');
                 if (data.message) {
                     resultMessage.textContent = data.message + ' ' + data.original_image;
-                    // Display the unblurred image here if password is correct
                     const imagePreview = document.getElementById('imagePreview');
                     const image = document.createElement('img');
                     image.src = data.original_image; // Show the unblurred image
