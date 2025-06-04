@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adult Content Detection</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container { margin-top: 50px; }
+        .alert { display: none; }
+        .img-preview { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center">Upload an Image for Adult Content Detection</h1>
+
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <input type="file" id="fileInput" name="file" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Upload</button>
+        </form>
+
+        <div class="alert alert-warning mt-4" id="warningMessage">
+            <strong>Warning!</strong> Adult content detected in the image.
+        </div>
+        <div class="img-preview" id="imagePreview"></div>
+
+        <!-- Unlock Content Modal -->
+        <div class="modal" id="unlockModal">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Unlock Content</h4>
+                    </div>
+                    <div class="modal-body">
+                        <input type="password" id="password" class="form-control" placeholder="Enter Password">
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button class="btn btn-primary" id="unlockBtn">Unlock</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            $('#uploadForm').on('submit', function (e) {
+                e.preventDefault();
+
+                var formData = new FormData(this);
+                $.ajax({
+                    url: '/upload',
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function (response) {
+                        if (response.is_nude) {
+                            $('#warningMessage').show();
+                            $('#imagePreview').html(`<img src="${response.blurred_image}" class="img-fluid" />`);
+                            $('#password').val(''); // Clear password field
+                            $('#unlockModal').modal('show');
+                        }
+                        else {
+                            alert('No adult content detected.');
+                        }
+                    }
+                });
+            });
+
+            $('#unlockBtn').click(function () {
+                var password = $('#password').val();
+                if (password === 'yourPassword') {
+                    alert('Content unlocked!');
+                    $('#unlockModal').modal('hide');
+                } else {
+                    alert('Incorrect password!');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
