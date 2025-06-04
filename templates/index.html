@@ -3,88 +3,187 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adult Content Detection</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <title>Edit Entries</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500&family=Rubik:wght@400&display=swap" rel="stylesheet">
     <style>
-        .container { margin-top: 50px; }
-        .alert { display: none; }
-        .img-preview { margin-top: 20px; }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(45deg, #6e39f7, #00f0d4); /* Gradient background */
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-size: 16px;
+        }
+        .container {
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 40px;
+            width: 100%;
+            max-width: 800px;
+            margin: 20px;
+        }
+        h1 {
+            font-family: 'Rubik', sans-serif;
+            font-size: 2.5rem;
+            text-align: center;
+        }
+        h3 {
+            font-size: 1.2rem;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .button {
+            padding: 15px 25px;
+            background-color: #004E77; /* Button dark blue */
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            margin: 15px;
+            cursor: pointer;
+            color: white;
+            transition: background-color 0.3s ease;
+            width: 100%;
+            max-width: 250px;
+            display: inline-block;
+        }
+        .button:hover {
+            background-color: #003254; /* Darker blue on hover */
+        }
+        .upload-input {
+            margin: 15px 0;
+            padding: 10px;
+            font-size: 1rem;
+            width: 100%;
+            max-width: 400px;
+        }
+        .form-group {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        #resultMessage {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+        .image-preview {
+            margin-top: 20px;
+        }
+        .image-preview img {
+            max-width: 100%;
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="text-center">Upload an Image for Adult Content Detection</h1>
+        <h1>Edit the Entries</h1>
+        <h3>What changes would you like to make?</h3>
 
-        <form id="uploadForm" enctype="multipart/form-data">
-            <div class="form-group">
-                <input type="file" id="fileInput" name="file" class="form-control" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Upload</button>
-        </form>
-
-        <div class="alert alert-warning mt-4" id="warningMessage">
-            <strong>Warning!</strong> Adult content detected in the image.
-        </div>
-        <div class="img-preview" id="imagePreview"></div>
-
-        <!-- Unlock Content Modal -->
-        <div class="modal" id="unlockModal">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h4 class="modal-title">Unlock Content</h4>
-                    </div>
-                    <div class="modal-body">
-                        <input type="password" id="password" class="form-control" placeholder="Enter Password">
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" data-dismiss="modal">Close</button>
-                        <button class="btn btn-primary" id="unlockBtn">Unlock</button>
-                    </div>
-                </div>
-            </div>
+        <!-- Password Update and Add New User Buttons -->
+        <div class="form-row">
+            <button class="button" id="updatePasswordBtn">Update Password</button>
+            <button class="button" id="addNewUserBtn">Add New User</button>
         </div>
 
+        <!-- Nudity Detection -->
+        <h3>Upload an Image to Detect Nudity</h3>
+        <div class="form-group">
+            <input type="file" id="imageUpload" class="upload-input" />
+            <button class="button" id="detectNudityBtn">Detect Nudity</button>
+        </div>
+
+        <!-- Password Protection to Unblur Image -->
+        <h3>Unblur Image</h3>
+        <div class="form-group">
+            <input type="text" id="passwordInput" placeholder="Enter password to unblur" class="upload-input"/>
+            <button class="button" id="unblurImageBtn">Unblur Image</button>
+        </div>
+
+        <div id="resultMessage"></div>
+        <div class="image-preview" id="imagePreview"></div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
-
     <script>
-        $(document).ready(function () {
-            $('#uploadForm').on('submit', function (e) {
-                e.preventDefault();
+        // Handle the Detect Nudity button click
+        document.getElementById('detectNudityBtn').addEventListener('click', function() {
+            const fileInput = document.getElementById('imageUpload');
+            const file = fileInput.files[0];
 
-                var formData = new FormData(this);
-                $.ajax({
-                    url: '/upload',
-                    type: 'POST',
-                    data: formData,
-                    contentType: false,
-                    processData: false,
-                    success: function (response) {
-                        if (response.is_nude) {
-                            $('#warningMessage').show();
-                            $('#imagePreview').html(`<img src="${response.blurred_image}" class="img-fluid" />`);
-                            $('#password').val(''); // Clear password field
-                            $('#unlockModal').modal('show');
+            if (file) {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                fetch('/detect_nudity', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const resultMessage = document.getElementById('resultMessage');
+                    const imagePreview = document.getElementById('imagePreview');
+                    if (data.message) {
+                        resultMessage.textContent = data.message;
+
+                        // Show the appropriate image
+                        const image = document.createElement('img');
+                        if (data.blur) {
+                            image.src = data.blurred_image; // Show blurred image if nudity is detected
+                        } else {
+                            image.src = data.original_image; // Show the original image if no nudity
                         }
-                        else {
-                            alert('No adult content detected.');
-                        }
+                        imagePreview.innerHTML = '';
+                        imagePreview.appendChild(image);
+                    } else {
+                        resultMessage.textContent = 'Error: ' + data.error;
                     }
-                });
-            });
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        });
 
-            $('#unlockBtn').click(function () {
-                var password = $('#password').val();
-                if (password === 'yourPassword') {
-                    alert('Content unlocked!');
-                    $('#unlockModal').modal('hide');
+        // Handle the Unblur Image button click
+        document.getElementById('unblurImageBtn').addEventListener('click', function() {
+            const password = document.getElementById('passwordInput').value;
+            const filename = "path_to_your_image.jpg";  // Replace with actual filename
+
+            fetch('/unblur_image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ filename: filename, password: password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultMessage = document.getElementById('resultMessage');
+                if (data.message) {
+                    resultMessage.textContent = data.message + ' ' + data.original_image;
+                    // Display the unblurred image here if password is correct
+                    const imagePreview = document.getElementById('imagePreview');
+                    const image = document.createElement('img');
+                    image.src = data.original_image; // Show the unblurred image
+                    imagePreview.innerHTML = '';
+                    imagePreview.appendChild(image);
                 } else {
-                    alert('Incorrect password!');
+                    resultMessage.textContent = 'Error: ' + data.error;
                 }
-            });
+            })
+            .catch(error => console.error('Error:', error));
         });
     </script>
 </body>
