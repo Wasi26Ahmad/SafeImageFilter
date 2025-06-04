@@ -132,7 +132,6 @@ def detect_and_classify(image_path):
         'blurred_image': blurred_image
     }
 
-# Route to unblur the image after password check
 @app.route('/unblur_image', methods=['POST'])
 def unblur_image():
     data = request.json
